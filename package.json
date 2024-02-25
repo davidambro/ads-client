@@ -5,7 +5,7 @@
   "main": "./src/ads-client.js",
   "scripts": {
     "test": "jest --runInBand",
-    "test-um": "set ADS_CLIENT_TEST_AMS=192.168.4.1.1.1 && jest --runInBand",
+    "test-um": "set ADS_CLIENT_TEST_AMS=192.168.37.129.1.1 && jest --runInBand",
     "generate-docs": "jsdoc ./src/ads-client.js ./README.md -c ./jsdoc-conf.json -d ./docs/ -t ./node_modules/docdash/"
   },
   "keywords": [
