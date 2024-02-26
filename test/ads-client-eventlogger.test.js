@@ -4,8 +4,8 @@ const AMS_NET_ID = (process.env["ADS_CLIENT_TEST_AMS"] ?? "localhost").trim();
 
 const client = new ads.Client({
   targetAmsNetId: AMS_NET_ID,
-  targetAdsPort: 110, // (ads-client-ads.js) ADS_RESERVED_PORTS.EventLog
-  bareClient: true, // needed to connect to eventlogger via ADS port 110
+  targetAdsPort: 851, // (ads-client-ads.js) ADS_RESERVED_PORTS.EventLogPublisher 132
+  bareClient: true, // needed to connect to EventLogPublisher via ADS port 132
 });
 
 /**
@@ -107,78 +107,227 @@ describe("connection", () => {
     expect(client.settings.targetAmsNetId).toBe(
       AMS_NET_ID === "localhost" ? "127.0.0.1.1.1" : AMS_NET_ID
     );
-    expect(client.settings.targetAdsPort).toBe(110);
+    expect(client.settings.targetAdsPort).toBe(851);
   });
 
-  test("connecting to localhost and 110", async () => {
+  test("connecting to localhost and 851", async () => {
     try {
       const res = await client.connect();
 
       // DAVID **************************************************
 
-      const buffer1 = Buffer.alloc(2064); // 40 bytes indicati in wireshark ma va in errore la funzione readWriteRaw
+      let now = new Date();
+      let timestamp = now.getTime(); // This will give you the timestamp in milliseconds
+      let buffer = Buffer.from(timestamp.toString(16), "hex"); // Convert the timestamp to hexadecimal and then to a buffer
+      console.log(timestamp, buffer);
 
+      // ********************************************************
+
+      const unknownFirstBuffer = Buffer.alloc(20);
+      // 01 00 00 00 c8 00 00 00 04 00 00 00 e8 03 00 00 c0 08 01 73
+
+      unknownFirstBuffer.writeUintLE(0x01, 0, 1);
+      unknownFirstBuffer.writeUintLE(0xc8, 4, 1);
+      unknownFirstBuffer.writeUintLE(0x04, 8, 1);
+      unknownFirstBuffer.writeUintLE(0xe8, 12, 1);
+      unknownFirstBuffer.writeUintLE(0x03, 13, 1);
+      unknownFirstBuffer.writeUintLE(0xc0, 16, 1);
+      unknownFirstBuffer.writeUintLE(0x08, 17, 1);
+      unknownFirstBuffer.writeUintLE(0x01, 18, 1);
+      unknownFirstBuffer.writeUintLE(0x73, 19, 1);
+
+      const readUnknownFirstBuffer = await client.readWriteRaw(
+        0x000000c8, // indexGroup
+        0x00000002, // indexOffset
+        1024020, // readLength
+        unknownFirstBuffer, // dataBuffer
+        132 // targetAdsPort
+      );
+
+      console.log(
+        readUnknownFirstBuffer,
+        readUnknownFirstBuffer.toString("hex")
+      );
+      console.log(readUnknownFirstBuffer.toString());
+
+      // ********************************************************
+
+      const eventClassNameBuffer = Buffer.alloc(40);
       // 01 00 00 00 66 00 00 00 18 00 00 00 00 00 d7 44 10 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 40
 
-      buffer1.writeUintLE(0x01, 0, 1);
-      buffer1.writeUintLE(0x66, 4, 1);
-      buffer1.writeUintLE(0x18, 8, 1);
-      buffer1.writeUintLE(0xd7, 14, 1);
-      buffer1.writeUintLE(0x44, 15, 1);
-      buffer1.writeUintLE(0x10, 16, 1);
-      buffer1.writeUintLE(0x04, 17, 1);
-      buffer1.writeUintLE(0x80, 38, 1);
-      buffer1.writeUintLE(0x40, 39, 1);
+      eventClassNameBuffer.writeUintLE(0x01, 0, 1);
+      eventClassNameBuffer.writeUintLE(0x66, 4, 1);
+      eventClassNameBuffer.writeUintLE(0x18, 8, 1);
+      eventClassNameBuffer.writeUintLE(0xd7, 14, 1);
+      eventClassNameBuffer.writeUintLE(0x44, 15, 1);
+      eventClassNameBuffer.writeUintLE(0x10, 16, 1);
+      eventClassNameBuffer.writeUintLE(0x04, 17, 1);
+      eventClassNameBuffer.writeUintLE(0x80, 38, 1);
+      eventClassNameBuffer.writeUintLE(0x40, 39, 1);
 
-      const readBuffer1 = await client.readWriteRaw(
-        0x01f4, // indexGroup
-        0, // indexOffset
+      const readEventClassNameBuffer = await client.readWriteRaw(
+        0x000001f4, // indexGroup
+        0x00000000, // indexOffset
         2064, // readLength
-        buffer1, // dataBuffer
-        110 // targetAdsPort
+        eventClassNameBuffer, // dataBuffer
+        132 // targetAdsPort
       );
-      console.log(readBuffer1);
 
-      //   const buffer1Length = Buffer.byteLength(readBuffer1);
-      //   console.log(buffer1Length);
+      console.log(
+        readEventClassNameBuffer,
+        readEventClassNameBuffer.toString("hex")
+      );
+      console.log(readEventClassNameBuffer.toString());
 
-      const buffer2 = Buffer.alloc(2064); // 68 bytes indicati in wireshark ma va in errore la funzione readWriteRaw
+      // ********************************************************
 
+      const eventTextAndIdBuffer = Buffer.alloc(68);
       // 01 00 00 00 64 00 00 00 34 00 00 00 00 00 00 00 10 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 7b 00 00 00 00 00 00 00 00 00 00 00 34 00 00 00 00 00 00 00 34 00 00 00 00 00 00 00 00 00 00 00
 
-      buffer2.writeUintLE(0x01, 0, 1);
-      buffer2.writeUintLE(0x66, 4, 1);
-      buffer2.writeUintLE(0x34, 8, 1);
-      buffer2.writeUintLE(0x10, 16, 1);
-      buffer2.writeUintLE(0x04, 17, 1);
-      buffer2.writeUintLE(0x7b, 36, 1);
-      buffer2.writeUintLE(0x34, 48, 1);
-      buffer2.writeUintLE(0x34, 56, 1);
+      eventTextAndIdBuffer.writeUintLE(0x01, 0, 1);
+      eventTextAndIdBuffer.writeUintLE(0x64, 4, 1);
+      eventTextAndIdBuffer.writeUintLE(0x34, 8, 1);
+      eventTextAndIdBuffer.writeUintLE(0x10, 16, 1);
+      eventTextAndIdBuffer.writeUintLE(0x04, 17, 1);
+      eventTextAndIdBuffer.writeUintLE(0x7b, 36, 1);
+      eventTextAndIdBuffer.writeUintLE(0x34, 48, 1);
+      eventTextAndIdBuffer.writeUintLE(0x34, 56, 1);
 
-      const readBuffer2 = await client.readWriteRaw(
-        0x01f4, // indexGroup
-        0, // indexOffset
+      const readEventTextAndIdBuffer = await client.readWriteRaw(
+        0x000001f4, // indexGroup
+        0x00000000, // indexOffset
         2064, // readLength
-        buffer2, // dataBuffer
-        110 // targetAdsPort
+        eventTextAndIdBuffer, // dataBuffer
+        132 // targetAdsPort
       );
-      console.log(readBuffer2);
 
-      // merge the two buffers
-      const mergedBuffer = Buffer.concat([readBuffer1, readBuffer2]);
-      console.log(mergedBuffer);
-      console.log(unpackTwinCatLoggerEntry(mergedBuffer));
+      console.log(
+        readEventTextAndIdBuffer,
+        readEventTextAndIdBuffer.toString("hex")
+      );
+      console.log(readEventTextAndIdBuffer.toString());
 
-      /*
-        {
-            timestamp: 1703-07-31T09:53:44.958Z,
-            msgTypeMask: 97,
-            msgTypes: [ 'hint', 'msgbox', 'resource' ],
-            senderAdsPort: 101,
-            sender: 't',
-            msg: ''
-          }
-        */
+      // ********************************************************
+
+      const fourthBuffer = Buffer.alloc(8);
+      // c0 a8 01 73 01 01 46 81
+      // (dec 192.168.1.115.1.1 70 129)
+
+      fourthBuffer.writeUintLE(0xc0, 0, 1);
+      fourthBuffer.writeUintLE(0xa8, 1, 1);
+      fourthBuffer.writeUintLE(0x01, 2, 1);
+      fourthBuffer.writeUintLE(0x73, 3, 1);
+      fourthBuffer.writeUintLE(0x01, 4, 1);
+      fourthBuffer.writeUintLE(0x01, 5, 1);
+      fourthBuffer.writeUintLE(0x46, 6, 1);
+      fourthBuffer.writeUintLE(0x81, 7, 1);
+
+      const readFourthBuffer = await client.readWriteRaw(
+        0x0000f090, // indexGroup
+        0x00000000, // indexOffset
+        4, // readLength
+        fourthBuffer, // dataBuffer
+        100 // targetAdsPort
+      );
+
+      console.log(readFourthBuffer, readFourthBuffer.toString("hex"));
+      console.log(readFourthBuffer.toString());
+
+      // ********************************************************
+
+      const unknownFifthBuffer = Buffer.alloc(44);
+      // 55 cd 10 00 02 00 14 00 e0 fd 0f 8e 18 00 00 00 00 00 00 00 81 01 94 00 11 84 80 00 db fe 0f 8e 18 84 80 00 01 00 01 00 19 02 01 00
+
+      unknownFifthBuffer.writeUintLE(0x55, 0, 1);
+      unknownFifthBuffer.writeUintLE(0xcd, 1, 1);
+      unknownFifthBuffer.writeUintLE(0x10, 2, 1);
+      unknownFifthBuffer.writeUintLE(0x02, 4, 1);
+      unknownFifthBuffer.writeUintLE(0x14, 6, 1);
+      unknownFifthBuffer.writeUintLE(0xe0, 8, 1);
+      unknownFifthBuffer.writeUintLE(0xfd, 9, 1);
+      unknownFifthBuffer.writeUintLE(0x0f, 10, 1);
+      unknownFifthBuffer.writeUintLE(0x8e, 11, 1);
+      unknownFifthBuffer.writeUintLE(0x18, 12, 1);
+      unknownFifthBuffer.writeUintLE(0x81, 20, 1);
+      unknownFifthBuffer.writeUintLE(0x01, 21, 1);
+      unknownFifthBuffer.writeUintLE(0x94, 22, 1);
+      unknownFifthBuffer.writeUintLE(0x11, 24, 1);
+      unknownFifthBuffer.writeUintLE(0x84, 25, 1);
+      unknownFifthBuffer.writeUintLE(0x80, 26, 1);
+      unknownFifthBuffer.writeUintLE(0xdb, 28, 1);
+      unknownFifthBuffer.writeUintLE(0xfe, 29, 1);
+      unknownFifthBuffer.writeUintLE(0x0f, 30, 1);
+      unknownFifthBuffer.writeUintLE(0x8e, 31, 1);
+      unknownFifthBuffer.writeUintLE(0x18, 32, 1);
+      unknownFifthBuffer.writeUintLE(0x84, 33, 1);
+      unknownFifthBuffer.writeUintLE(0x80, 34, 1);
+      unknownFifthBuffer.writeUintLE(0x01, 36, 1);
+      unknownFifthBuffer.writeUintLE(0x01, 38, 1);
+      unknownFifthBuffer.writeUintLE(0x19, 40, 1);
+      unknownFifthBuffer.writeUintLE(0x02, 41, 1);
+      unknownFifthBuffer.writeUintLE(0x01, 42, 1);
+
+      const readUnknownFifthBuffer = await client.readWriteRaw(
+        0x0000002a, // indexGroup
+        0x0000002a, // indexOffset
+        65536, // readLength
+        unknownFifthBuffer, // dataBuffer
+        851 // targetAdsPort
+      );
+
+      console.log(
+        readUnknownFifthBuffer,
+        readUnknownFifthBuffer.toString("hex")
+      );
+      console.log(readUnknownFifthBuffer.toString());
+
+      // ********************************************************
+
+      const unknownSixthBuffer = Buffer.alloc(44);
+      // 55 cd 10 00 02 00 14 00 e0 fd 0f 8e 18 00 00 00 00 00 00 00 81 01 94 00 11 84 80 00 db fe 0f 8e 18 84 80 00 01 00 01 00 19 02 01 00
+
+      unknownSixthBuffer.writeUintLE(0x55, 0, 1);
+      unknownSixthBuffer.writeUintLE(0xcd, 1, 1);
+      unknownSixthBuffer.writeUintLE(0x10, 2, 1);
+      unknownSixthBuffer.writeUintLE(0x02, 4, 1);
+      unknownSixthBuffer.writeUintLE(0x14, 6, 1);
+      unknownSixthBuffer.writeUintLE(0xe0, 8, 1);
+      unknownSixthBuffer.writeUintLE(0xfd, 9, 1);
+      unknownSixthBuffer.writeUintLE(0x0f, 10, 1);
+      unknownSixthBuffer.writeUintLE(0x8e, 11, 1);
+      unknownSixthBuffer.writeUintLE(0x18, 12, 1);
+      unknownSixthBuffer.writeUintLE(0x81, 20, 1);
+      unknownSixthBuffer.writeUintLE(0x01, 21, 1);
+      unknownSixthBuffer.writeUintLE(0x94, 22, 1);
+      unknownSixthBuffer.writeUintLE(0x11, 24, 1);
+      unknownSixthBuffer.writeUintLE(0x84, 25, 1);
+      unknownSixthBuffer.writeUintLE(0x80, 26, 1);
+      unknownSixthBuffer.writeUintLE(0xdb, 28, 1);
+      unknownSixthBuffer.writeUintLE(0xfe, 29, 1);
+      unknownSixthBuffer.writeUintLE(0x0f, 30, 1);
+      unknownSixthBuffer.writeUintLE(0x8e, 31, 1);
+      unknownSixthBuffer.writeUintLE(0x18, 32, 1);
+      unknownSixthBuffer.writeUintLE(0x84, 33, 1);
+      unknownSixthBuffer.writeUintLE(0x80, 34, 1);
+      unknownSixthBuffer.writeUintLE(0x01, 36, 1);
+      unknownSixthBuffer.writeUintLE(0x01, 38, 1);
+      unknownSixthBuffer.writeUintLE(0x19, 40, 1);
+      unknownSixthBuffer.writeUintLE(0x02, 41, 1);
+      unknownSixthBuffer.writeUintLE(0x01, 42, 1);
+
+      const readUnknownSixthBuffer = await client.readWriteRaw(
+        0x0000002a, // indexGroup
+        0x0000002a, // indexOffset
+        65536, // readLength
+        unknownSixthBuffer, // dataBuffer
+        851 // targetAdsPort
+      );
+
+      console.log(
+        readUnknownSixthBuffer,
+        readUnknownSixthBuffer.toString("hex")
+      );
+      console.log(readUnknownSixthBuffer.toString());
 
       // DAVID **************************************************
 
